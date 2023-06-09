@@ -5,6 +5,7 @@ use tokio::{io::AsyncWriteExt, process::Command};
 
 pub struct DaemonHandle {
     exec: String,
+    sdf: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -37,18 +38,33 @@ pub struct Params {
 
 impl DaemonHandle {
     pub fn new() -> Result<DaemonHandle> {
-        let exec = std::env::var("PROXY_EXEC").map_err(|_| Error::NoExec)?;
-        Ok(DaemonHandle { exec })
+        let exec = std::env::var("SS_EXEC").map_err(|_| Error::NoExec)?;
+        let sdf = if let Ok(sdf) = std::env::var("SS_SDF") {
+            Some(sdf)
+        } else {
+            None
+        };
+
+        Ok(DaemonHandle { exec, sdf })
     }
 
     pub async fn run(&self, params: Params) -> Result<Response> {
         let params = params.to_stdout_string();
 
-        let mut child = Command::new(&self.exec)
-            .arg("-daemon")
-            .stdout(Stdio::piped())
-            .stdin(Stdio::piped())
-            .spawn()?;
+        let mut child = if let Some(sdf) = &self.sdf {
+            Command::new(&self.exec)
+                .arg("-daemon")
+                .arg(format!("-sdf {}", sdf))
+                .stdout(Stdio::piped())
+                .stdin(Stdio::piped())
+                .spawn()?
+        } else {
+            Command::new(&self.exec)
+                .arg("-daemon")
+                .stdout(Stdio::piped())
+                .stdin(Stdio::piped())
+                .spawn()?
+        };
 
         let mut stdin = child.stdin.take().unwrap();
         stdin.write_all(params.as_bytes()).await.unwrap();

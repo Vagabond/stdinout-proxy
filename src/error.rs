@@ -6,6 +6,6 @@ pub enum Error {
     Axum(#[from] axum::BoxError),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("environmental variable PROXY_EXEC is not set!")]
+    #[error("environmental variable SS_EXEC is not set!")]
     NoExec,
 }
