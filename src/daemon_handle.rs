@@ -54,8 +54,8 @@ impl DaemonHandle {
         let mut child = if let Some(sdf) = &self.sdf {
             Command::new(&self.exec)
                 .arg("-daemon")
-                .arg(format!("-sdf {}", sdf))
-                .stdout(Stdio::piped())
+                .arg("-sdf")
+                .arg(format!("{}", sdf))                .stdout(Stdio::piped())
                 .stdin(Stdio::piped())
                 .spawn()?
         } else {
