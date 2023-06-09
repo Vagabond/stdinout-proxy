@@ -5,6 +5,7 @@ use rust_decimal::Decimal;
 use serde_json::{json, Value};
 use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
+use tokio::io::AsyncReadExt;
 
 pub type HandlerResult = std::result::Result<response::Json<Value>, (StatusCode, String)>;
 
@@ -65,6 +66,8 @@ pub async fn stdin_handler(
     query: Query<Params>,
     //AuthBearer(token): AuthBearer
 ) -> HandlerResult {
+    // todo: check token
+    
     use tokio::process::Command;
     let query = query.0.to_stdout_string();
 
@@ -72,6 +75,7 @@ pub async fn stdin_handler(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let mut child = Command::new(url)
+        .arg("-daemon")
         .stdout(Stdio::piped())
         .stdin(Stdio::piped())
         .spawn()
@@ -80,6 +84,10 @@ pub async fn stdin_handler(
     let mut stdin = child.stdin.take().unwrap();
     stdin.write_all(query.as_bytes()).await.unwrap();
     stdin.flush().await.unwrap();
+    // We drop the handle here which signals EOF to the child process.
+    // This tells the child process that it there is no more data on the pipe.
+    drop(stdin);
+
     let output = child.wait_with_output().await.unwrap();
     let mut response = String::from_utf8(output.stdout).unwrap();
     trim_newline(&mut response);
