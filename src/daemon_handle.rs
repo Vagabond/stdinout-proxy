@@ -61,7 +61,7 @@ impl DaemonHandle {
         let mut response = String::from_utf8(output.stdout).unwrap();
         trim_newline(&mut response);
         let decimal = response
-            .split(" ")
+            .split(' ')
             .map(|s| s.parse::<Decimal>().unwrap())
             .collect::<Vec<Decimal>>();
         Ok(Response {
