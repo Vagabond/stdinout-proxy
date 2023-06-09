@@ -31,5 +31,9 @@ impl Cli {
 async fn main() -> Result {
     use clap::Parser;
     let cli = Cli::parse();
-    cli.run().await
+    if let Err(e) = cli.run().await {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+    Ok(())
 }
