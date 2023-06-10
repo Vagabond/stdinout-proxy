@@ -49,8 +49,8 @@ pub async fn stdin_handler(
         .await
         .map(|r| {
             response::Json(json!({
-        "status": "success",
-        "data": r}))
+                "status": "success",
+                "data": r}))
         })
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
