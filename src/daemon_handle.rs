@@ -1,11 +1,15 @@
 use super::{Error, Result};
 use rust_decimal::Decimal;
 use std::process::Stdio;
-use tokio::{io::AsyncWriteExt, process::Command};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    process::Command,
+};
 
 pub struct DaemonHandle {
-    exec: String,
-    sdf: Option<String>,
+    _child: tokio::process::Child,
+    stdin: tokio::process::ChildStdin,
+    stdout: BufReader<tokio::process::ChildStdout>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -37,44 +41,40 @@ pub struct Params {
 }
 
 impl DaemonHandle {
-    pub fn new() -> Result<DaemonHandle> {
+    pub async fn new() -> Result<DaemonHandle> {
         let exec = std::env::var("SS_EXEC").map_err(|_| Error::NoExec)?;
-        let sdf = if let Ok(sdf) = std::env::var("SS_SDF") {
-            Some(sdf)
-        } else {
-            None
-        };
-
-        Ok(DaemonHandle { exec, sdf })
-    }
-
-    pub async fn run(&self, params: Params) -> Result<Response> {
-        let params = params.to_stdout_string();
-
-        let mut child = if let Some(sdf) = &self.sdf {
-            Command::new(&self.exec)
+        let mut child = if let Ok(sdf) = std::env::var("SS_SDF") {
+            Command::new(&exec)
                 .arg("-daemon")
                 .arg("-sdf")
-                .arg(format!("{}", sdf))                .stdout(Stdio::piped())
+                .arg(&sdf)
+                .stdout(Stdio::piped())
                 .stdin(Stdio::piped())
                 .spawn()?
         } else {
-            Command::new(&self.exec)
+            Command::new(&exec)
                 .arg("-daemon")
                 .stdout(Stdio::piped())
                 .stdin(Stdio::piped())
                 .spawn()?
         };
 
-        let mut stdin = child.stdin.take().unwrap();
-        stdin.write_all(params.as_bytes()).await.unwrap();
-        stdin.flush().await.unwrap();
-        // We drop the handle here which signals EOF to the child process.
-        // This tells the child process that it there is no more data on the pipe.
-        drop(stdin);
+        let stdin = child.stdin.take().unwrap();
+        let stdout = BufReader::new(child.stdout.take().unwrap());
 
-        let output = child.wait_with_output().await.unwrap();
-        let mut response = String::from_utf8(output.stdout).unwrap();
+        Ok(DaemonHandle {
+            _child: child,
+            stdin,
+            stdout,
+        })
+    }
+
+    pub async fn run(&mut self, params: Params) -> Result<Response> {
+        let params = params.to_stdout_string();
+        self.stdin.write_all(params.as_bytes()).await.unwrap();
+        self.stdin.flush().await.unwrap();
+        let mut response = String::new();
+        self.stdout.read_line(&mut response).await?;
         trim_newline(&mut response);
         let decimal = response
             .split(' ')

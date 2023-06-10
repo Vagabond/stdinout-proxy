@@ -13,7 +13,7 @@ pub struct Server {}
 
 impl Server {
     pub async fn run(self) -> Result {
-        let daemon: Arc<Mutex<DaemonHandle>> = Arc::new(Mutex::new(DaemonHandle::new()?));
+        let daemon: Arc<Mutex<DaemonHandle>> = Arc::new(Mutex::new(DaemonHandle::new().await?));
 
         let app = Router::new()
             .route("/v1/stdin", get(stdin_handler))
@@ -42,7 +42,7 @@ pub async fn stdin_handler(
     //AuthBearer(token): AuthBearer
 ) -> HandlerResult {
     // todo: check token
-    let daemon = daemon.lock().await;
+    let mut daemon = daemon.lock().await;
     let query = query.0;
     daemon
         .run(query)
