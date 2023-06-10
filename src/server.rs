@@ -1,5 +1,5 @@
 use super::*;
-use axum::{extract::Query, http::StatusCode, response, routing::post, Extension, Router};
+use axum::{extract::Query, http::StatusCode, response, routing::get, Extension, Router};
 use axum_auth::AuthBearer;
 use daemon_handle::DaemonHandle;
 use serde_json::{json, Value};
@@ -16,7 +16,7 @@ impl Server {
         let daemon: Arc<Mutex<DaemonHandle>> = Arc::new(Mutex::new(DaemonHandle::new()?));
 
         let app = Router::new()
-            .route("/v1/stdin", post(stdin_handler))
+            .route("/v1/stdin", get(stdin_handler))
             .layer(Extension(daemon));
 
         let server_endpoint = std::env::var("PORT").unwrap_or("3000".to_string());
