@@ -143,13 +143,13 @@ mod test {
             dbm: true,
             m: true,
             o: "test4".to_string(),
-            r: Decimal::from_str("2").unwrap(),
+            r: 2,
             res: Decimal::from_str("1200").unwrap(),
             pm: Decimal::from_str("4").unwrap(),
             rla: Decimal::from_str("44.73436").unwrap(),
             rlo: Decimal::from_str("-68.81993").unwrap(),
         };
         let params_string = params.to_stdout_string();
-        assert_eq!(params_string, "-sdf hgt -lat 44.73566 -lon -68.82446 -txh 4 -f 900 -erp 5 -rxh 2 -rt -90 -dbm -m -o test4 -R 2 -res 1200 -pm 4 -rla 44.73436 -rlo -68.81993")
+        assert_eq!(params_string, "-sdf hgt -lat 44.73566 -lon -68.82446 -txh 4 -f 900 -erp 5 -rxh 2 -rt -90 -dbm -m -o test4 -R 2 -res 1200 -pm 4 -rla 44.73436 -rlo -68.81993\n")
     }
 }
