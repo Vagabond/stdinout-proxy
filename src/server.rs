@@ -15,9 +15,16 @@ impl Server {
     pub async fn run(self) -> Result {
         let daemon: Arc<Mutex<DaemonHandle>> = Arc::new(Mutex::new(DaemonHandle::new().await?));
 
-        let app = Router::new()
-            .route("/v1/stdin", get(stdin_handler))
-            .layer(Extension(daemon));
+        let app = if let Ok(env_token) = std::env::var("AUTH_TOKEN") {
+            Router::new()
+                .route("/v1/stdin", get(auth_stdin_handler))
+                .layer(Extension(daemon))
+                .layer(Extension(env_token))
+        } else {
+            Router::new()
+                .route("/v1/stdin", get(stdin_handler))
+                .layer(Extension(daemon))
+        };
 
         let server_endpoint = std::env::var("PORT").unwrap_or("3000".to_string());
         println!("Binding to port {}...", server_endpoint);
@@ -36,12 +43,23 @@ impl From<Error> for HandlerResult {
     }
 }
 
+pub async fn auth_stdin_handler(
+    Extension(daemon): Extension<Arc<Mutex<DaemonHandle>>>,
+    Extension(env_token): Extension<String>,
+    query: Query<daemon_handle::Params>,
+    AuthBearer(token): AuthBearer
+
+) -> HandlerResult {
+    if token != env_token {
+        return Err((StatusCode::UNAUTHORIZED, "Unauthorized".to_string()));
+    }
+    stdin_handler(Extension(daemon), query).await
+}
+
 pub async fn stdin_handler(
     Extension(daemon): Extension<Arc<Mutex<DaemonHandle>>>,
     query: Query<daemon_handle::Params>,
-    //AuthBearer(token): AuthBearer
 ) -> HandlerResult {
-    // todo: check token
     let mut daemon = daemon.lock().await;
     let query = query.0;
     daemon
