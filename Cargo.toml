@@ -11,6 +11,7 @@ path = "src/main.rs"
 members = ["mock-client"]
 
 [dependencies]
+signal-server = { git = "https://github.com/JayKickliter/Signal-Server.git", branch = "jsk/add-server" }
 axum = { version = "0", features = ["query"] }
 axum-auth = { version = "0", features = ["auth-bearer"] }
 clap = { version = "4", features = ["derive"]}
@@ -19,6 +20,9 @@ serde_json = "*"
 rust_decimal = "1"
 thiserror = { workspace = true }
 tokio = { workspace = true }
+rust_decimal_macros = "1.29.1"
+futures-util = "0.3.28"
+h3o = "0.3.2"
 
 [workspace.dependencies]
 thiserror = "1"
