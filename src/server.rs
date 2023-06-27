@@ -1,6 +1,5 @@
 use super::*;
 use axum::{
-    body::StreamBody,
     extract::Query,
     http::{header, StatusCode},
     response,
@@ -8,12 +7,9 @@ use axum::{
     routing::get,
     Extension, Router,
 };
-use axum_auth::AuthBearer;
 use daemon_handle::DaemonHandle;
-use futures_util::stream::{self, Stream};
 use serde_json::{json, Value};
-use std::{io, sync::Arc};
-use tokio::sync::Mutex;
+use std::sync::Arc;
 
 pub type HandlerResult = std::result::Result<response::Json<Value>, (StatusCode, String)>;
 
@@ -22,7 +18,7 @@ pub struct Server {}
 
 impl Server {
     pub async fn run(self) -> Result {
-        let daemon: Arc<DaemonHandle> = Arc::new(DaemonHandle::new().await?);
+        let daemon: Arc<DaemonHandle> = Arc::new(DaemonHandle::new()?);
 
         let app = Router::new()
             .route("/v1/path", get(path_handler))
@@ -56,7 +52,6 @@ pub async fn path_handler(
     let query = query.0;
     daemon
         .path(query)
-        .await
         .map(|r| {
             response::Json(json!({
                 "status": "success",
@@ -75,7 +70,7 @@ pub async fn plot_handler(
     //    return Err((StatusCode::UNAUTHORIZED, "Unauthorized".to_string()));
     //}
     let query = query.0;
-    let png = daemon.plot(query).await.unwrap();
+    let png = daemon.plot(query).unwrap();
 
     let headers = [(header::CONTENT_TYPE, "image/png")];
 
@@ -91,7 +86,6 @@ pub async fn h3plot_handler(
     let query = query.0;
     daemon
         .h3plot(query)
-        .await
         .map(|r| {
             response::Json(json!({
                 "status": "success",
