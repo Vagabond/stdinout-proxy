@@ -1,19 +1,12 @@
 use super::{Error, Result};
+use axum::http::StatusCode;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
-use std::process::Stdio;
+use std::{collections::HashMap, path::Path, process::Stdio};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::Command,
 };
-
-use std::collections::HashMap;
-
-use axum::{
-    http::{StatusCode},
-};
-
-use std::path::Path;
 
 pub struct DaemonHandle {
     //_child: tokio::process::Child,
@@ -36,7 +29,7 @@ pub struct PathResponse {
 
 #[derive(Debug, serde::Serialize)]
 pub struct H3PlotResponse {
-    pub hexes: HashMap<String, f64>
+    pub hexes: HashMap<String, f64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -135,14 +128,16 @@ impl DaemonHandle {
             // below 10 is smaller than 3 arc seconds
             //11 => h3o::Resolution::Eleven,
             //12 => h3o::Resolution::Twelve,
-            _ => return Err(Error::Axum("bad resolution".into()))
+            _ => return Err(Error::Axum("bad resolution".into())),
         };
         let ll = h3o::LatLng::new(params.lat as f64, params.lon as f64).unwrap();
         let cell = ll.to_cell(res);
         let mut i = 0;
         let mut hexes = HashMap::new();
         loop {
-            let cells = cell.grid_ring_fast(i).collect::<Option<Vec<_>>>()
+            let cells = cell
+                .grid_ring_fast(i)
+                .collect::<Option<Vec<_>>>()
                 .unwrap_or_default();
             let mut found = false;
             for cell in cells {
@@ -155,9 +150,9 @@ impl DaemonHandle {
                 }
             }
             if !found {
-                break Ok(H3PlotResponse {hexes: hexes});
+                break Ok(H3PlotResponse { hexes: hexes });
             }
-            i+= 1;
+            i += 1;
         }
     }
 
@@ -166,7 +161,6 @@ impl DaemonHandle {
         let report = signal_server::call_sigserve(&params).unwrap();
         Ok(report.image_data)
     }
-
 }
 
 fn trim_newline(s: &mut String) {
@@ -263,7 +257,6 @@ impl H3PlotParams {
         output
     }
 }
-
 
 #[cfg(test)]
 mod test {

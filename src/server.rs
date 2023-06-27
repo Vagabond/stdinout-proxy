@@ -1,15 +1,19 @@
 use super::*;
-use axum::{extract::Query, http::{header, StatusCode}, response, routing::get, Extension, Router, response::{IntoResponse},};
+use axum::{
+    body::StreamBody,
+    extract::Query,
+    http::{header, StatusCode},
+    response,
+    response::IntoResponse,
+    routing::get,
+    Extension, Router,
+};
 use axum_auth::AuthBearer;
-use axum::body::StreamBody;
 use daemon_handle::DaemonHandle;
-use serde_json::{json, Value};
-use std::sync::Arc;
-use tokio::sync::Mutex;
-
-use std::io;
-
 use futures_util::stream::{self, Stream};
+use serde_json::{json, Value};
+use std::{io, sync::Arc};
+use tokio::sync::Mutex;
 
 pub type HandlerResult = std::result::Result<response::Json<Value>, (StatusCode, String)>;
 
@@ -71,13 +75,9 @@ pub async fn plot_handler(
     //    return Err((StatusCode::UNAUTHORIZED, "Unauthorized".to_string()));
     //}
     let query = query.0;
-    let png = daemon
-        .plot(query)
-        .await.unwrap();
-    
-    let headers = [
-                          (header::CONTENT_TYPE, "image/png"),
-    ];
+    let png = daemon.plot(query).await.unwrap();
+
+    let headers = [(header::CONTENT_TYPE, "image/png")];
 
     (headers, png)
 }

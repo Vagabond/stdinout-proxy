@@ -1,9 +1,9 @@
 mod error;
-pub use error::Error;
-pub type Result<T = ()> = std::result::Result<T, Error>;
+mod server;
 
 pub mod daemon_handle;
-mod server;
+pub use error::Error;
+pub type Result<T = ()> = std::result::Result<T, Error>;
 
 #[derive(Debug, clap::Parser)]
 #[clap(version = env!("CARGO_PKG_VERSION"))]
