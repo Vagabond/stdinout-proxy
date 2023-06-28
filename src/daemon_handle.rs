@@ -132,7 +132,7 @@ impl DaemonHandle {
         loop {
             let loop_run_time = start_time.elapsed();
             if loop_run_time > Duration::from_secs(15) {
-                eprintln!(
+                println!(
                     "h3plot timeout, breaking early, seconds: {}",
                     loop_run_time.as_secs()
                 );
@@ -140,7 +140,7 @@ impl DaemonHandle {
             }
 
             if i > 50 {
-                eprintln!("h3plot seems to be in a runaway loop, breaking early, loops: {i}");
+                println!("h3plot seems to be in a runaway loop, breaking early, loops: {i}");
                 break;
             }
 
@@ -156,7 +156,7 @@ impl DaemonHandle {
                 }
             }
             if !found {
-                eprintln!("h3plot finished, loops: {i}");
+                println!("h3plot finished, loops: {i}");
                 break;
             }
             i += 1;

@@ -11,7 +11,7 @@ path = "src/main.rs"
 members = ["mock-client"]
 
 [dependencies]
-rfprop = { git = "https://github.com/JayKickliter/Signal-Server.git", branch = "master" }
+rfprop = { git = "https://github.com/JayKickliter/Signal-Server.git", branch = "jsk/add-bsdf-v0" }
 axum = { version = "0", features = ["query"] }
 axum-auth = { version = "0", features = ["auth-bearer"] }
 clap = { version = "4", features = ["derive"]}
@@ -27,3 +27,6 @@ h3o = "0.3.2"
 [workspace.dependencies]
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
+
+[profile.release]
+debug = true
