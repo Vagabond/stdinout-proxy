@@ -1014,7 +1014,7 @@ dependencies = [
 [[package]]
 name = "rfprop"
 version = "0.1.0"
-source = "git+https://github.com/JayKickliter/Signal-Server.git?branch=master#81d316bb76d6b9ce10c310a666d338a58bd33cb3"
+source = "git+https://github.com/JayKickliter/Signal-Server.git?branch=jsk/de-pointer-isze#c921014246c3e26469f93bf085118e66a272541f"
 dependencies = [
  "cmake",
  "cxx",
