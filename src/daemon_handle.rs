@@ -1,25 +1,12 @@
 use super::{Error, Result};
 use rust_decimal::Decimal;
-use rust_decimal_macros::dec;
-use std::process::Stdio;
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    process::Command,
+use std::{
+    collections::HashMap,
+    path::Path,
+    time::{Duration, Instant},
 };
 
-use std::collections::HashMap;
-
-use axum::{
-    http::{StatusCode},
-};
-
-use std::path::Path;
-
-pub struct DaemonHandle {
-    //_child: tokio::process::Child,
-    //stdin: tokio::process::ChildStdin,
-    //stdout: BufReader<tokio::process::ChildStdout>,
-}
+pub struct DaemonHandle;
 
 #[derive(Debug, serde::Serialize)]
 pub struct PathResponse {
@@ -36,7 +23,7 @@ pub struct PathResponse {
 
 #[derive(Debug, serde::Serialize)]
 pub struct H3PlotResponse {
-    pub hexes: HashMap<String, f64>
+    pub hexes: HashMap<u64, f64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -94,19 +81,19 @@ pub struct H3PlotParams {
 }
 
 impl DaemonHandle {
-    pub async fn new() -> Result<DaemonHandle> {
-        if let Ok(sdf) = std::env::var("SS_SDF") {
-            signal_server::init(Path::new(&sdf), false);
-            Ok(DaemonHandle {})
-        } else {
-            signal_server::init(Path::new("/tmp/doesnotexist"), true);
-            Ok(DaemonHandle {})
-        }
+    pub fn new() -> Result<DaemonHandle> {
+        let (sdf_path, debug) = match std::env::var("SS_SDF") {
+            Ok(sdf_path) => (sdf_path, false),
+            _ => ("/tmp/doesnotexist".to_string(), true),
+        };
+        // Unwrap is fine, since this is only called once.
+        rfprop::init(Path::new(&sdf_path), debug).unwrap();
+        Ok(DaemonHandle)
     }
 
-    pub async fn path(&self, params: PathParams) -> Result<PathResponse> {
+    pub fn path(&self, params: PathParams) -> Result<PathResponse> {
         let params = params.to_stdout_string();
-        let report = signal_server::call_sigserve(&params).unwrap();
+        let report = rfprop::call_sigserve(&params).unwrap();
         Ok(PathResponse {
             path_loss: report.loss,
             received_power: report.dbm,
@@ -120,7 +107,7 @@ impl DaemonHandle {
         })
     }
 
-    pub async fn h3plot(&self, params: H3PlotParams) -> Result<H3PlotResponse> {
+    pub fn h3plot(&self, params: H3PlotParams) -> Result<H3PlotResponse> {
         let res = match params.res {
             1 => h3o::Resolution::One,
             2 => h3o::Resolution::Two,
@@ -135,46 +122,52 @@ impl DaemonHandle {
             // below 10 is smaller than 3 arc seconds
             //11 => h3o::Resolution::Eleven,
             //12 => h3o::Resolution::Twelve,
-            _ => return Err(Error::Axum("bad resolution".into()))
+            _ => return Err(Error::Axum("bad resolution".into())),
         };
-        let ll = h3o::LatLng::new(params.lat as f64, params.lon as f64).unwrap();
+        let ll = h3o::LatLng::new(params.lat, params.lon).unwrap();
         let cell = ll.to_cell(res);
-        let mut i = 0;
         let mut hexes = HashMap::new();
+        let start_time = Instant::now();
+        let mut i = 0;
         loop {
-            let cells = cell.grid_ring_fast(i).collect::<Option<Vec<_>>>()
-                .unwrap_or_default();
+            let loop_run_time = start_time.elapsed();
+            if loop_run_time > Duration::from_secs(15) {
+                eprintln!(
+                    "h3plot timeout, breaking early, seconds: {}",
+                    loop_run_time.as_secs()
+                );
+                break;
+            }
+
+            if i > 50 {
+                eprintln!("h3plot seems to be in a runaway loop, breaking early, loops: {i}");
+                break;
+            }
+
+            let cells = cell.grid_ring_fast(i).collect::<Option<Vec<_>>>();
             let mut found = false;
-            for cell in cells {
+            for cell in cells.into_iter().flatten() {
                 let latlng = h3o::LatLng::from(cell);
                 let paramstr = params.to_stdout_string(latlng.lat(), latlng.lng());
-                let report = signal_server::call_sigserve(&paramstr).unwrap();
-                if (report.dbm > params.rt) {
-                    hexes.insert(format!("{}", cell), report.dbm);
+                let report = rfprop::call_sigserve(&paramstr).unwrap();
+                if report.dbm > params.rt {
+                    hexes.insert(u64::from(cell), report.dbm);
                     found = true;
                 }
             }
             if !found {
-                break Ok(H3PlotResponse {hexes: hexes});
+                eprintln!("h3plot finished, loops: {i}");
+                break;
             }
-            i+= 1;
+            i += 1;
         }
+        Ok(H3PlotResponse { hexes })
     }
 
-    pub async fn plot(&self, params: PlotParams) -> Result<Vec<u8>> {
+    pub fn plot(&self, params: PlotParams) -> Result<Vec<u8>> {
         let params = params.to_stdout_string();
-        let report = signal_server::call_sigserve(&params).unwrap();
+        let report = rfprop::call_sigserve(&params).unwrap();
         Ok(report.image_data)
-    }
-
-}
-
-fn trim_newline(s: &mut String) {
-    if s.ends_with('\n') {
-        s.pop();
-        if s.ends_with('\r') {
-            s.pop();
-        }
     }
 }
 
@@ -263,7 +256,6 @@ impl H3PlotParams {
         output
     }
 }
-
 
 #[cfg(test)]
 mod test {
