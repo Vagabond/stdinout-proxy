@@ -84,12 +84,16 @@ pub async fn h3plot_handler(
     //AuthBearer(token): AuthBearer
 ) -> HandlerResult {
     let query = query.0;
-    daemon
-        .h3plot(query)
-        .map(|r| {
-            response::Json(json!({
-                "status": "success",
-                "data": r}))
-        })
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    let join = tokio::task::spawn_blocking(move || {
+        daemon
+            .h3plot(query)
+            .map(|r| {
+                response::Json(json!({
+                    "status": "success",
+                    "data": r}))
+            })
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    });
+    join.await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
 }

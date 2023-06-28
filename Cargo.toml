@@ -11,7 +11,7 @@ path = "src/main.rs"
 members = ["mock-client"]
 
 [dependencies]
-signal-server = { git = "https://github.com/JayKickliter/Signal-Server.git", branch = "jsk/add-server" }
+rfprop = { git = "https://github.com/JayKickliter/Signal-Server.git", branch = "master" }
 axum = { version = "0", features = ["query"] }
 axum-auth = { version = "0", features = ["auth-bearer"] }
 clap = { version = "4", features = ["derive"]}
