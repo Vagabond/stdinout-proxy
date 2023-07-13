@@ -1,4 +1,5 @@
 use super::{Error, Result};
+use rayon::prelude::*;
 use rust_decimal::Decimal;
 use std::{
     collections::HashMap,
@@ -145,17 +146,18 @@ impl DaemonHandle {
             }
 
             let cells = cell.grid_ring_fast(i).collect::<Option<Vec<_>>>();
-            let mut found = false;
-            for cell in cells.into_iter().flatten() {
+            let found = std::sync::atomic::AtomicBool::new(false);
+            hexes.par_extend(cells.into_par_iter().flatten().map(|cell| {
                 let latlng = h3o::LatLng::from(cell);
                 let paramstr = params.to_stdout_string(latlng.lat(), latlng.lng());
                 let report = rfprop::call_sigserve(&paramstr).unwrap();
                 if report.dbm > params.rt {
-                    hexes.insert(u64::from(cell), report.dbm);
-                    found = true;
+                    found.store(true, std::sync::atomic::Ordering::SeqCst);
                 }
-            }
-            if !found {
+                (u64::from(cell), report.dbm)
+            }));
+
+            if !found.load(std::sync::atomic::Ordering::SeqCst) {
                 println!("h3plot finished, loops: {i}");
                 break;
             }
