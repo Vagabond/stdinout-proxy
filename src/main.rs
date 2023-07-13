@@ -32,7 +32,7 @@ async fn main() -> Result {
     use clap::Parser;
     let cli = Cli::parse();
     if let Err(e) = cli.run().await {
-        eprintln!("Error: {}", e);
+        println!("Error: {}", e);
         std::process::exit(1);
     }
     Ok(())
